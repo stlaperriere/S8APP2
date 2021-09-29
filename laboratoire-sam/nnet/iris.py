@@ -54,6 +54,8 @@ def main():
 
     # TODO : Apply any relevant transformation to the data
     # (e.g. filtering, normalization, dimensionality reduction)
+    
+    # ON NORMALISE ICI
 
     # Create neural network
     # TODO : Tune the number and size of hidden layers
