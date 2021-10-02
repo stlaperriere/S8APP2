@@ -60,8 +60,12 @@ def track(episode):
     plt.plot(track_centre)
     plt.plot(track_right)
 
-def track_pos_and_angle(episode):
-    plt.plot(episode.angle)
+def track_pos_angle_steer(episode):
+    plt.plot(episode.trackPos, label="trackPos")
+    plt.plot(episode.angle, label = "angle")
+    plt.plot(episode.steerCmd, label = "steerCmd")
+    plt.legend()
+    plt.title("TrackPos, Angle et SteerCmd - Logique floue (Steer) - Alpine 1")
     #plt.hist(episode.angle, bins=20)
     plt.show()
     #plt.hist(episode.trackPos)
@@ -76,7 +80,7 @@ if __name__ == '__main__':
     
     #histogram_speedX(episode)
     #track(episode)
-    #track_pos_and_angle(episode)
+    track_pos_angle_steer(episode)
     
-    episode.visualize(showObservations=True, showActions=True)
+    #episode.visualize(showObservations=True, showActions=True)
     #plt.show()

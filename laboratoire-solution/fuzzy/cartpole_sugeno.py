@@ -305,7 +305,7 @@ def main():
     plt.show()
 
     VERBOSE = False
-    for episode in range(1):
+    for episode in range(10):
         print('Episode no.%d' % (episode))
         env.reset()
 

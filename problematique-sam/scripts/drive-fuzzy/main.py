@@ -32,6 +32,7 @@ import sys
 import time
 import logging
 from SimpleController import SimpleController
+from FuzzyController import FuzzyController
 
 sys.path.append('../..')
 from torcs.control.core import TorcsControlEnv, TorcsException, EpisodeRecorder
@@ -45,105 +46,13 @@ logger = logging.getLogger(__name__)
 # Define helper functions here
 ################################
 
-from skfuzzy import control as ctrl
-import skfuzzy as fuzz
 import numpy as np
-import matplotlib.pyplot as plt
-
-def singletonmf(x, a):
-    """
-    Singleton membership function generator.
-    Parameters
-    ----------
-    x : 1d array
-        Independent variable.
-    a : constant
-    Returns
-    -------
-    y : 1d array
-        Singleton membership function.
-    """
-    y = np.zeros(len(x))
-
-    if a >= np.min(x) and a <= np.max(x):
-        idx = (np.abs(x - a)).argmin()
-        y[idx] = 1.0
-
-    return y
-
-def createFuzzyController():
-    # Create the fuzzy variables for inputs and outputs.
-    # Defuzzification (defuzzify_method) methods for fuzzy variables:
-    #    'centroid': Centroid of area
-    #    'bisector': bisector of area
-    #    'mom'     : mean of maximum
-    #    'som'     : min of maximum
-    #    'lom'     : max of maximum
-    
-    # poleAngle = ctrl.Antecedent(np.linspace(-180, 180, 1000), 'pole-angle')
-    # poleVelocity = ctrl.Antecedent(np.linspace(-100, 100, 1000), 'pole-velocity')
-    # force = ctrl.Consequent(np.linspace(-50, 50, 1000), 'force', defuzzify_method='centroid')
-    
-    angle = ctrl.Antecedent(np.linspace(-np.pi, np.pi, 1000), 'angle')
-    trackPos = ctrl.Antecedent(np.linspace(-1, 1, 1000), 'trackPos')
-    steer = ctrl.Consequent(np.linspace(-1, 1, 1000), 'steer', defuzzify_method='centroid')
-    
-    steer.accumulation_method = np.fmax
-    
-    # Create membership functions
-    #poleAngle['negative'] = fuzz.trapmf(poleAngle.universe, [-181, -180, -15, 0])
-    #poleAngle['null'] = fuzz.trapmf(poleAngle.universe, [-15, -5, 5, 15])
-    #poleAngle['positive'] = fuzz.trapmf(poleAngle.universe, [0, 15, 180, 181])
-    angle['droite'] = fuzz.trapmf(angle.universe, [-np.pi, -np.pi, -0.1, 0])
-    angle['centre'] = fuzz.trimf(angle.universe, [-0.1, 0, 0.1])
-    angle['gauche'] = fuzz.trapmf(angle.universe, [0, 0.1, np.pi, np.pi])
-    
-    trackPos['gauche'] = fuzz.trapmf(trackPos.universe, [-1, -1, -0.2, -0.1])
-    trackPos['centre'] = fuzz.trapmf(trackPos.universe, [-0.2, -0.1, 0.1, 0.2])
-    trackPos['droite'] = fuzz.trapmf(trackPos.universe, [0.1, 0.2, 1, 1])
-    
-    steer['gauche-toute'] = fuzz.trapmf(steer.universe, [-1, -1, -0.5, -0.3])
-    steer['gauche'] = fuzz.trapmf(steer.universe, [-0.5, -0.3, -0.1, 0])
-    steer['centre'] = fuzz.trimf(steer.universe, [-0.1, 0, 0.1])
-    steer['droite'] = fuzz.trapmf(steer.universe, [0, 0.1, 0.3, 0.5])
-    steer['droite-toute'] = fuzz.trapmf(steer.universe, [0.3, 0.5, 1, 1])
-    
-    rules = []
-    #rules.append(ctrl.Rule(antecedent=(poleAngle['negative'] & poleVelocity['negative']), consequent=force['negative']))
-    rules.append(ctrl.Rule(antecedent=(angle['gauche'] & trackPos['gauche']), consequent=steer['droite-toute']))
-    rules.append(ctrl.Rule(antecedent=(angle['centre'] & trackPos['gauche']), consequent=steer['droite']))
-    rules.append(ctrl.Rule(antecedent=(angle['droite'] & trackPos['gauche']), consequent=steer['centre']))
-    rules.append(ctrl.Rule(antecedent=(angle['gauche'] & trackPos['centre']), consequent=steer['droite']))
-    rules.append(ctrl.Rule(antecedent=(angle['centre'] & trackPos['centre']), consequent=steer['centre']))
-    rules.append(ctrl.Rule(antecedent=(angle['droite'] & trackPos['centre']), consequent=steer['gauche']))
-    rules.append(ctrl.Rule(antecedent=(angle['gauche'] & trackPos['droite']), consequent=steer['centre']))
-    rules.append(ctrl.Rule(antecedent=(angle['centre'] & trackPos['droite']), consequent=steer['gauche']))
-    rules.append(ctrl.Rule(antecedent=(angle['droite'] & trackPos['droite']), consequent=steer['gauche-toute']))
-    
-    # Conjunction (and_func) and disjunction (or_func) methods for rules:
-    #     np.fmin
-    #     np.fmax
-    for rule in rules:
-        rule.and_func = np.multiply
-        rule.or_func = np.fmax
-    
-    system = ctrl.ControlSystem(rules)
-    sim = ctrl.ControlSystemSimulation(system)
-        
-    return sim
-
-def calculateSteer(fuzzyController, state):
-    fuzzyController.input['angle'] = state['angle'][0]
-    fuzzyController.input['trackPos'] = state['trackPos'][0]
-    fuzzyController.compute()
-    #fuzzyController.print_state()
-    return fuzzyController.output['steer']
 
 def drive(simpleController, fuzzyController, state):
     accel, brake = simpleController._calculateAcceleration(state)
     gear = simpleController._calculateGear(state)
     #steer = simpleController._calculateSteering(state)
-    steer = calculateSteer(fuzzyController, state)
+    steer = fuzzyController.calculateSteer(state)
 
     action = {'accel': np.array([accel], dtype=np.float32),
               'brake': np.array([brake], dtype=np.float32),
@@ -153,20 +62,11 @@ def drive(simpleController, fuzzyController, state):
 
 def main():
     # Creation du controleur de logique floue (steer)
-    sim = createFuzzyController()
+    fuzzyController = FuzzyController()
     
     # Creation du controleur simple
     simpleController = SimpleController()
-    
-    print('------------------------ RULES ------------------------')
-    for rule in sim.ctrl.rules:
-        print(rule)
-    print('-------------------------------------------------------')
-    
-    # Display fuzzy variables
-    for var in sim.ctrl.fuzzy_variables:
-        var.view()
-    plt.show()
+
     
     recordingsPath = os.path.join(CDIR, 'recordings')
     if not os.path.exists(recordingsPath):
@@ -192,7 +92,7 @@ def main():
                     while not done:
                         # TODO: Select the next action based on the observation
                         # action = env.action_space.sample()
-                        action = drive(simpleController, sim, observation)
+                        action = drive(simpleController, fuzzyController, observation)
                         recorder.save(observation, action)
     
                         # Execute the action
