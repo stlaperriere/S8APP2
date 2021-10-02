@@ -50,6 +50,7 @@ import numpy as np
 
 def drive(simpleController, fuzzyController, state):
     accel, brake = simpleController._calculateAcceleration(state)
+    #accel, brake = fuzzyController.calculateAccel(state)
     gear = simpleController._calculateGear(state)
     #steer = simpleController._calculateSteering(state)
     steer = fuzzyController.calculateSteer(state)
@@ -73,7 +74,7 @@ def main():
         os.makedirs(recordingsPath)
 
     try:
-        with TorcsControlEnv(render=False) as env:
+        with TorcsControlEnv(render=True) as env:
 
             nbTracks = len(TorcsControlEnv.availableTracks)
             nbSuccessfulEpisodes = 0

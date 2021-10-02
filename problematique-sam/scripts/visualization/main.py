@@ -55,10 +55,18 @@ def track(episode):
         track_left.append(item[8])
         track_centre.append(item[9])
         track_right.append(item[10])
+        
+    speedX = []
+    for item in episode.speed:
+        speedX.append(item[0])
     
-    plt.plot(track_left)
-    plt.plot(track_centre)
-    plt.plot(track_right)
+    plt.plot(track_left, label = "track_left")
+    plt.plot(track_centre, label = "track_centre")
+    plt.plot(track_right, label = "track_right")
+    plt.plot(episode.steerCmd * 100, label = "steerCmd")
+    #plt.plot(episode.accelCmd * 100, label = "accelCmd")
+    plt.plot(speedX, label = "speedX")
+    plt.legend()
 
 def track_pos_angle_steer(episode):
     plt.plot(episode.trackPos, label="trackPos")
@@ -79,8 +87,8 @@ if __name__ == '__main__':
     episode = EpisodeRecorder.restore(recordingFilename)
     
     #histogram_speedX(episode)
-    #track(episode)
-    track_pos_angle_steer(episode)
+    track(episode)
+    #track_pos_angle_steer(episode)
     
     #episode.visualize(showObservations=True, showActions=True)
     #plt.show()

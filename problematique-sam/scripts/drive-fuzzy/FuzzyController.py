@@ -30,6 +30,7 @@ class FuzzyController(object):
     
     def __init__(self):
         self.steerController = self.createFuzzyControllerSteer("sugeno")
+        self.accelController = self.createAccelController()
         
     def createFuzzyControllerSteer(self, style):
         # Create the fuzzy variables for inputs and outputs.
@@ -104,6 +105,68 @@ class FuzzyController(object):
         system = ctrl.ControlSystem(rules)
         sim = ctrl.ControlSystemSimulation(system)
         
+        #print('------------------------ RULES ------------------------')
+        #for rule in sim.ctrl.rules:
+        #    print(rule)
+        #print('-------------------------------------------------------')
+    
+        # Display fuzzy variables
+        #for var in sim.ctrl.fuzzy_variables:
+        #    var.view()
+        #plt.show()
+            
+        return sim
+    
+    def calculateSteer(self, state):
+        self.steerController.input['angle'] = state['angle'][0]
+        self.steerController.input['trackPos'] = state['trackPos'][0]
+        self.steerController.compute()
+        #fuzzyController.print_state()
+        return self.steerController.output['steer']
+    
+    def createAccelController(self) :
+        left_sensor = ctrl.Antecedent(np.linspace(0, 100, 1000), 'left_sensor')
+        right_sensor = ctrl.Antecedent(np.linspace(0, 100, 1000), 'right_sensor')
+        centre_sensor = ctrl.Antecedent(np.linspace(0, 100, 1000), 'centre_sensor')
+        
+        accel = ctrl.Consequent(np.linspace(-1, 1, 1000), 'accel', defuzzify_method='centroid')
+        
+        accel.accumulation_method = np.fmax
+        
+        #left_sensor['near'] = fuzz.trapmf(left_sensor.universe, [0, 0, 25, 30])
+        #left_sensor['med'] = fuzz.trapmf(left_sensor.universe, [25, 30, 60, 70])
+        left_sensor['far'] = fuzz.trapmf(left_sensor.universe, [30, 35, 100, 100])
+        
+        centre_sensor['near'] = fuzz.trapmf(centre_sensor.universe, [0, 0, 25, 30])
+        centre_sensor['med'] = fuzz.trapmf(centre_sensor.universe, [25, 30, 60, 70])
+        centre_sensor['far'] = fuzz.trapmf(centre_sensor.universe, [60, 70, 100, 100])
+        
+        #right_sensor['near'] = fuzz.trapmf(right_sensor.universe, [0, 0, 25, 30])
+        #right_sensor['med'] = fuzz.trapmf(right_sensor.universe, [25, 30, 60, 70])
+        right_sensor['far'] = fuzz.trapmf(right_sensor.universe, [30, 35, 100, 100])
+        
+        accel['arriere-toute'] = singletonmf(accel.universe, -1)
+        accel['arriere'] = singletonmf(accel.universe, -0.5)
+        accel['neutre'] = singletonmf(accel.universe, 0)
+        accel['avant'] = singletonmf(accel.universe, 0.5)
+        accel['avant-toute'] = singletonmf(accel.universe, 1)
+        
+        rules = []
+        rules.append(ctrl.Rule(antecedent=(centre_sensor['far'] | left_sensor['far'] | right_sensor['far']), consequent=accel['avant-toute']))
+        rules.append(ctrl.Rule(antecedent=(centre_sensor['med']), consequent=accel['neutre']))
+        rules.append(ctrl.Rule(antecedent=(centre_sensor['near']), consequent=accel['arriere-toute']))
+        
+        
+        # Conjunction (and_func) and disjunction (or_func) methods for rules:
+        #     np.fmin
+        #     np.fmax
+        for rule in rules:
+            rule.and_func = np.multiply
+            rule.or_func = np.fmax
+        
+        system = ctrl.ControlSystem(rules)
+        sim = ctrl.ControlSystemSimulation(system)
+        
         print('------------------------ RULES ------------------------')
         for rule in sim.ctrl.rules:
             print(rule)
@@ -116,12 +179,65 @@ class FuzzyController(object):
             
         return sim
     
-    def calculateSteer(self, state):
-        self.steerController.input['angle'] = state['angle'][0]
-        self.steerController.input['trackPos'] = state['trackPos'][0]
-        self.steerController.compute()
-        #fuzzyController.print_state()
-        return self.steerController.output['steer']
+        #rules.append(ctrl.Rule(antecedent=(left_sensor['med'] | right_sensor['med']), consequent=accel['arriere']))
     
-#    def createAccelController(self) :
+    def calculateAccel(self, state):
+        
+        sin10 = 0.17365
+        cos10 = 0.98481
+        
+        curSpeedX = state['speed'][0]
+        curTrackPos = state['trackPos'][0]
+        
+        # checks if car is out of track
+        if (curTrackPos < 1 and curTrackPos > -1):
+
+            # Reading of sensor at +10 degree w.r.t. car axis
+            rxSensor = state['track'][8]
+            # Reading of sensor parallel to car axis
+            cSensor = state['track'][9]
+            # Reading of sensor at -5 degree w.r.t. car axis
+            sxSensor = state['track'][10]
+
+            # Track is straight and enough far from a turn so goes to max speed
+            if cSensor >= rxSensor and cSensor >= sxSensor:
+                angle = 0
+            else:
+                # Approaching a turn on right
+                if rxSensor > sxSensor:
+                    # Computing approximately the "angle" of turn
+                    h = cSensor * sin10
+                    b = rxSensor - cSensor * cos10
+                    angle = np.arcsin(b * b / (h * h + b * b))
+
+                # Approaching a turn on left
+                else:
+                    # Computing approximately the "angle" of turn
+                    h = cSensor * sin10
+                    b = sxSensor - cSensor * cos10
+                    angle = np.arcsin(b * b / (h * h + b * b))
+
+        else:
+            # when out of track returns a moderate acceleration command
+            accel = 0.3
+
+        
+        self.accelController.input['left_sensor'] = state['track'][8]
+        self.accelController.input['centre_sensor'] = state['track'][9]
+        self.accelController.input['right_sensor'] = state['track'][10]
+        self.accelController.compute()
+        result = self.accelController.output['accel']
+        
+        #print(f'accel : {result}')
+        
+        accel = 0
+        brake = 0
+        
+        if result > 0:
+            accel = result
+        
+        if result < 0:
+            brake = -result
+        
+        return accel, brake
         
