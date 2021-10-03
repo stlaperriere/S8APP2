@@ -31,6 +31,7 @@ class FuzzyController(object):
     def __init__(self):
         self.steerController = self.createFuzzyControllerSteer("sugeno")
         self.accelController = self.createAccelController()
+        self.shiftController = self.createShiftController()
         
     def createFuzzyControllerSteer(self, style):
         # Create the fuzzy variables for inputs and outputs.
@@ -125,37 +126,37 @@ class FuzzyController(object):
         return self.steerController.output['steer']
     
     def createAccelController(self) :
-        left_sensor = ctrl.Antecedent(np.linspace(0, 100, 1000), 'left_sensor')
-        right_sensor = ctrl.Antecedent(np.linspace(0, 100, 1000), 'right_sensor')
-        centre_sensor = ctrl.Antecedent(np.linspace(0, 100, 1000), 'centre_sensor')
+        track_angle = ctrl.Antecedent(np.linspace(0, np.pi/2, 1000), 'track_angle')
+        speed = ctrl.Antecedent(np.linspace(0, 400, 1000), 'speed')
         
         accel = ctrl.Consequent(np.linspace(-1, 1, 1000), 'accel', defuzzify_method='centroid')
         
         accel.accumulation_method = np.fmax
         
-        #left_sensor['near'] = fuzz.trapmf(left_sensor.universe, [0, 0, 25, 30])
-        #left_sensor['med'] = fuzz.trapmf(left_sensor.universe, [25, 30, 60, 70])
-        left_sensor['far'] = fuzz.trapmf(left_sensor.universe, [30, 35, 100, 100])
+        track_angle['straight'] = fuzz.trapmf(track_angle.universe, [0, 0, 0.4, 0.6])
+        track_angle['med'] = fuzz.trapmf(track_angle.universe, [0.4, 0.6, np.pi/4, 3*np.pi/8])
+        track_angle['sharp'] = fuzz.trapmf(track_angle.universe, [1, 1.2, np.pi/2, np.pi/2])
         
-        centre_sensor['near'] = fuzz.trapmf(centre_sensor.universe, [0, 0, 25, 30])
-        centre_sensor['med'] = fuzz.trapmf(centre_sensor.universe, [25, 30, 60, 70])
-        centre_sensor['far'] = fuzz.trapmf(centre_sensor.universe, [60, 70, 100, 100])
-        
-        #right_sensor['near'] = fuzz.trapmf(right_sensor.universe, [0, 0, 25, 30])
-        #right_sensor['med'] = fuzz.trapmf(right_sensor.universe, [25, 30, 60, 70])
-        right_sensor['far'] = fuzz.trapmf(right_sensor.universe, [30, 35, 100, 100])
+        speed['slow'] = fuzz.trapmf(speed.universe, [0, 0, 30, 40])
+        speed['med'] = fuzz.trapmf(speed.universe, [40, 50, 70, 80])
+        speed['fast'] = fuzz.trapmf(speed.universe, [70, 90, 400, 400])
         
         accel['arriere-toute'] = singletonmf(accel.universe, -1)
-        accel['arriere'] = singletonmf(accel.universe, -0.5)
+        accel['arriere'] = singletonmf(accel.universe, -0.25)
         accel['neutre'] = singletonmf(accel.universe, 0)
-        accel['avant'] = singletonmf(accel.universe, 0.5)
+        accel['avant'] = singletonmf(accel.universe, 0.25)
         accel['avant-toute'] = singletonmf(accel.universe, 1)
         
         rules = []
-        rules.append(ctrl.Rule(antecedent=(centre_sensor['far'] | left_sensor['far'] | right_sensor['far']), consequent=accel['avant-toute']))
-        rules.append(ctrl.Rule(antecedent=(centre_sensor['med']), consequent=accel['neutre']))
-        rules.append(ctrl.Rule(antecedent=(centre_sensor['near']), consequent=accel['arriere-toute']))
-        
+        rules.append(ctrl.Rule(antecedent=(speed['slow'] & track_angle['straight']), consequent=accel['avant-toute']))
+        rules.append(ctrl.Rule(antecedent=(speed['med'] & track_angle['straight']), consequent=accel['avant-toute']))
+        rules.append(ctrl.Rule(antecedent=(speed['fast'] & track_angle['straight']), consequent=accel['avant']))
+        rules.append(ctrl.Rule(antecedent=(speed['slow'] & track_angle['med']), consequent=accel['avant']))
+        rules.append(ctrl.Rule(antecedent=(speed['med'] & track_angle['med']), consequent=accel['avant']))
+        rules.append(ctrl.Rule(antecedent=(speed['fast'] & track_angle['med']), consequent=accel['avant']))
+        rules.append(ctrl.Rule(antecedent=(speed['slow'] & track_angle['sharp']), consequent=accel['avant-toute']))
+        rules.append(ctrl.Rule(antecedent=(speed['med'] & track_angle['sharp']), consequent=accel['avant-toute']))
+        rules.append(ctrl.Rule(antecedent=(speed['fast'] & track_angle['sharp']), consequent=accel['arriere-toute']))
         
         # Conjunction (and_func) and disjunction (or_func) methods for rules:
         #     np.fmin
@@ -167,15 +168,15 @@ class FuzzyController(object):
         system = ctrl.ControlSystem(rules)
         sim = ctrl.ControlSystemSimulation(system)
         
-        print('------------------------ RULES ------------------------')
-        for rule in sim.ctrl.rules:
-            print(rule)
-        print('-------------------------------------------------------')
+        #print('------------------------ RULES ------------------------')
+        #for rule in sim.ctrl.rules:
+        #    print(rule)
+        #print('-------------------------------------------------------')
     
         # Display fuzzy variables
-        for var in sim.ctrl.fuzzy_variables:
-            var.view()
-        plt.show()
+        #for var in sim.ctrl.fuzzy_variables:
+        #    var.view()
+        #plt.show()
             
         return sim
     
@@ -186,7 +187,6 @@ class FuzzyController(object):
         sin10 = 0.17365
         cos10 = 0.98481
         
-        curSpeedX = state['speed'][0]
         curTrackPos = state['trackPos'][0]
         
         # checks if car is out of track
@@ -216,18 +216,16 @@ class FuzzyController(object):
                     h = cSensor * sin10
                     b = sxSensor - cSensor * cos10
                     angle = np.arcsin(b * b / (h * h + b * b))
-
+            #print(angle)
+            self.accelController.input['track_angle'] = angle
+            self.accelController.input['speed'] = state['speed'][0]
+            
+            self.accelController.compute()
+            result = self.accelController.output['accel']
         else:
             # when out of track returns a moderate acceleration command
-            accel = 0.3
+            result = 0.3
 
-        
-        self.accelController.input['left_sensor'] = state['track'][8]
-        self.accelController.input['centre_sensor'] = state['track'][9]
-        self.accelController.input['right_sensor'] = state['track'][10]
-        self.accelController.compute()
-        result = self.accelController.output['accel']
-        
         #print(f'accel : {result}')
         
         accel = 0
@@ -240,4 +238,66 @@ class FuzzyController(object):
             brake = -result
         
         return accel, brake
+    
+    def createShiftController(self):
+        rpm = ctrl.Antecedent(np.linspace(0, 8000, 1000), 'rpm')
         
+        shouldShift = ctrl.Consequent(np.linspace(-1, 1, 1000), 'shouldShift', defuzzify_method='centroid')
+        
+        shouldShift.accumulation_method = np.fmax
+        
+        rpm['low'] = fuzz.trapmf(rpm.universe, [0, 0, 3000, 3500])
+        rpm['med'] = fuzz.trapmf(rpm.universe, [3000, 3500, 6000, 6500])
+        rpm['high'] = fuzz.trapmf(rpm.universe, [6000, 6500, 8000, 8000])
+        
+        shouldShift['downshift'] = singletonmf(shouldShift.universe, -1)
+        shouldShift['stay'] = singletonmf(shouldShift.universe, 0)
+        shouldShift['upshift'] = singletonmf(shouldShift.universe, 1)
+        
+        rules = []
+        rules.append(ctrl.Rule(antecedent=(rpm['low']), consequent=shouldShift['downshift']))
+        rules.append(ctrl.Rule(antecedent=(rpm['med']), consequent=shouldShift['stay']))
+        rules.append(ctrl.Rule(antecedent=(rpm['high']), consequent=shouldShift['upshift']))
+        
+                # Conjunction (and_func) and disjunction (or_func) methods for rules:
+        #     np.fmin
+        #     np.fmax
+        for rule in rules:
+            rule.and_func = np.multiply
+            rule.or_func = np.fmax
+        
+        system = ctrl.ControlSystem(rules)
+        sim = ctrl.ControlSystemSimulation(system)
+        
+        print('------------------------ RULES ------------------------')
+        for rule in sim.ctrl.rules:
+            print(rule)
+        print('-------------------------------------------------------')
+    
+        # Display fuzzy variables
+        for var in sim.ctrl.fuzzy_variables:
+            var.view()
+        plt.show()
+            
+        return sim
+    
+    def calculateGear(self, state):
+        #return 1
+        print(state['rpm'])
+        self.shiftController.input['rpm'] = state['rpm']
+        self.shiftController.compute()
+        shouldShift = self.shiftController.output['shouldShift']
+        
+        print(shouldShift)
+        
+        nextGear = state['gear'][0]
+        
+        if nextGear == 0: return nextGear + 1
+        
+        if shouldShift[0] > 0.5 and state['gear'][0] < 6:
+            nextGear = nextGear + 1
+        elif shouldShift[0] < -0.5 and state['gear'][0] > 1:
+            nextGear = nextGear - 1
+        
+        print(nextGear)
+        return nextGear

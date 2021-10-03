@@ -47,11 +47,13 @@ logger = logging.getLogger(__name__)
 ################################
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 def drive(simpleController, fuzzyController, state):
-    accel, brake = simpleController._calculateAcceleration(state)
-    #accel, brake = fuzzyController.calculateAccel(state)
-    gear = simpleController._calculateGear(state)
+    #accel, brake = simpleController._calculateAcceleration(state)
+    accel, brake = fuzzyController.calculateAccel(state)
+    #gear = simpleController._calculateGear(state)
+    gear = fuzzyController.calculateGear(state)
     #steer = simpleController._calculateSteering(state)
     steer = fuzzyController.calculateSteer(state)
 
@@ -114,7 +116,8 @@ def main():
     
                             elapsedTime = time.time() - startTime
                             logger.info('Episode completed in %0.1f sec (computation time).' % (elapsedTime))
-
+                #plt.plot(simpleController.trackAngle, label="trackAngle")
+                #plt.show()
             logger.info('-----------------------------------------------------------')
             logger.info('Total number of successful tracks: %d (out of %d)' % (nbSuccessfulEpisodes, nbTracks))
             logger.info('-----------------------------------------------------------')

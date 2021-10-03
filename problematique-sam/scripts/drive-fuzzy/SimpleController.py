@@ -12,6 +12,7 @@ class SimpleController(object):
 
     def __init__(self, absEnabled=True):
         self.absEnabled = absEnabled
+        self.trackAngle = []
 
     # usage: GEAR = calculateGear(STATE)
     #
@@ -140,7 +141,9 @@ class SimpleController(object):
                     h = cSensor * sin10
                     b = sxSensor - cSensor * cos10
                     angle = np.arcsin(b * b / (h * h + b * b))
-
+                    
+                print(f'angle de la piste = {angle}')
+                self.trackAngle.append(angle)
                 # Estimate the target speed depending on turn and on how close it is
                 targetSpeed = maxSpeed * (cSensor * np.sin(angle) / maxSpeedDist) * angleSensitivity
                 targetSpeed = np.clip(targetSpeed, 0.0, maxSpeed)
