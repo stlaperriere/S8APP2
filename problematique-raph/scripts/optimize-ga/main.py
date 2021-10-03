@@ -47,11 +47,11 @@ logger = logging.getLogger(__name__)
 ################################
 cross_rate = 0.8 # Crossover rate to determine if crossover is performed
 mutation_rate = 0.5 # Mutation rate to determine if mutation ocures
-population_size = 100
+population_size = 75
 boundaries = [[0.1, 5], [0.1, 5], [0.1, 5], [0.1, 5], [0.1, 5], [1, 10], [0, 90], [0, 90]]
 n_bits = 8
-n_gen = 15
-n_dead = 25
+n_gen = 100
+n_dead = 15
 ################################
 # Define helper functions here
 ################################
@@ -61,10 +61,16 @@ def fitness_function(speed, dist, fuel):
 def mutation():
     pass
 
-def reproduction(p1, p2):
-    first_half = p1[:int(len(p1)/2)]
-    second_half = p2[int(len(p2)/2):]
-    return np.concatenate((first_half, second_half))
+def reproduction(p, n_bits):
+    genes = [p[0][:n_bits],
+             p[1][n_bits:2*n_bits],
+             p[2][2*n_bits:3*n_bits],
+             p[3][3*n_bits:4*n_bits],
+             p[4][4*n_bits:5*n_bits],
+             p[5][5*n_bits:6*n_bits],
+             p[6][6*n_bits:7*n_bits],
+             p[7][7*n_bits:]]
+    return np.concatenate((genes))
 
 def select_parent(scores, dead_indexes):
     while(True):
@@ -113,7 +119,7 @@ def main():
                 logger.info("Generation : %d", i)
                 scores = []
                 for j, person in enumerate(population):
-                    parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in person[:n_bits]), 2), n_bits, 5, 0.1)]),
+                    parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in person[:n_bits]), 2), n_bits, 5, 0.11)]),
                                   'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in person[n_bits:2*n_bits]), 2), n_bits, 5, 0.11)]),
                                   'gear-4-ratio':               np.array([scale_value(int("".join(str(x) for x in person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.11)]),
                                   'gear-5-ratio':               np.array([scale_value(int("".join(str(x) for x in person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.11)]),
@@ -138,13 +144,15 @@ def main():
                     # Calcul du score
                     scores.append(fitness_function(observation['topspeed'][0], observation['distRaced'][0], observation['fuelUsed'][0]))
                   
+                    """
                     # Find best person
                     if scores[j] > best_score:
                         
                         best_person, best_score = population[j], scores[j]
                         logger.info(" ")
-                        logger.info("new best = %f", best_score)
-                
+                        logger.info("New best = %f", best_score)
+                    """
+                    
                 
                 if i < n_gen:
                     # Survivor selection
@@ -153,14 +161,18 @@ def main():
                     # Create a child for each dead person
                     for j in range(n_dead):
                         # Select 2 parents that survived
-                        p1 = select_parent(scores, dead_indexes)
-                        p2 = select_parent(scores, dead_indexes)
-                       
+                        #p1 = select_parent(scores, dead_indexes)
+                        #p2 = select_parent(scores, dead_indexes)
+                        parents = [population[select_parent(scores, dead_indexes)] for x in range(8)]
                         # Create a new child
-                        child = reproduction(population[p1], population[p2])
-                        
+                        #child = reproduction(population[p1], population[p2])
+                        child = reproduction(parents, n_bits)
                         # Replace a dead person with the new child
                         population[dead_indexes[j]] = child
+                
+                best_i = np.argmax(scores)
+                best_person, best_score = population[best_i], scores[best_i]
+                logger.info("Best player in the current gen = %f", best_score)
                 
             parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[:n_bits]), 2), n_bits, 5, 0.1)]),
                           'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.1)]),
@@ -170,7 +182,7 @@ def main():
                           'rear-differential-ratio':    np.array([scale_value(int("".join(str(x) for x in best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1)]),
                           'rear-spoiler-angle':         np.array([scale_value(int("".join(str(x) for x in best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0)]),
                           'front-spoiler-angle':        np.array([scale_value(int("".join(str(x) for x in best_person[7*n_bits:]), 2), n_bits, 90, 0)])}
-                    
+
             # Perform the evaluation with the simulator and p2 not in dead_indexes
             observation, _, _, _ = env.step(parameters)
             
