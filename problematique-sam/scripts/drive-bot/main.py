@@ -52,7 +52,7 @@ def main():
         os.makedirs(recordingsPath)
 
     try:
-        with TorcsBotEnv(render=False) as env:
+        with TorcsBotEnv(render=True) as env:
 
             nbTracks = len(TorcsBotEnv.availableTracks)
             nbSuccessfulEpisodes = 0

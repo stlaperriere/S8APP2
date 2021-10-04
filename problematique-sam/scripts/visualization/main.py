@@ -31,6 +31,7 @@ import sys
 import os
 import logging
 import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.append('../..')
 from torcs.control.core import Episode, EpisodeRecorder
@@ -44,7 +45,9 @@ def histogram_speedX(episode):
     for item in episode.speed:
         speedX.append(item[0])
         
-    plt.hist(speedX)
+    plt.hist(speedX, label="speedX", bins=20)
+    plt.legend()
+    plt.title("Histogramme - Speed X - Alpine 1 - Drive Simple")
 
 def track(episode):
     track_left = []
@@ -60,13 +63,15 @@ def track(episode):
     for item in episode.speed:
         speedX.append(item[0])
     
-    plt.plot(track_left, label = "track_left")
-    plt.plot(track_centre, label = "track_centre")
-    plt.plot(track_right, label = "track_right")
-    plt.plot(episode.steerCmd * 100, label = "steerCmd")
+    #plt.plot(track_left, label = "track_left")
+    #plt.plot(track_centre, label = "track_centre")
+    #plt.plot(track_right, label = "track_right")
+    plt.plot(episode.steerCmd * 100, label = "steerCmd x 100")
     #plt.plot(episode.accelCmd * 100, label = "accelCmd")
     plt.plot(speedX, label = "speedX")
-    plt.legend()
+    plt.title("Vitesse dans les courbes - Drive Simple (accel) et Logique floue (steer)", fontsize = 18)
+    plt.legend(fontsize=20)
+    
 
 def track_pos_angle_steer(episode):
     plt.plot(episode.trackPos, label="trackPos")
@@ -78,17 +83,64 @@ def track_pos_angle_steer(episode):
     plt.show()
     #plt.hist(episode.trackPos)
     
+def gear(episode):
+    gear = []
+    
+    for item in episode.gear:
+        gear.append(item[0])
+    
+    plt.plot(gear, label="Gear")
+    plt.title("Vitesse  - Drive Bot (gear) - Alpine 1")
+    
+def comp_steer(episode_fuzzy, episode_simple):
+    plt.plot(episode_simple.steerCmd, label = "Simple")
+    plt.plot(episode_fuzzy.steerCmd, label = "Fuzzy")
+    
+    plt.title("Comparatif - Floue vs Simple - Steer - Alpine 1")
+    plt.legend()
+    
+def comp_accel(episode_fuzzy, episode_simple):
+    
+    speedX_fuzz = []
+    for item in episode_fuzzy.speed:
+        speedX_fuzz.append(item[0])
+    
+    speedX_simple = []
+    for item in episode_simple.speed:
+        speedX_simple.append(item[0])
+        
+    print(f'Vitesse moyenne - simple : {np.mean(speedX_simple)}')
+    print(f'Vitesse moyenne - fuzzy : {np.mean(speedX_fuzz)}')
+        
+    
+    #plt.plot(-episode_simple.brakeCmd, label = "brake - Simple")
+    plt.plot(speedX_fuzz, label = "speed - Floue")
+    #plt.plot(-episode_fuzzy.brakeCmd, label = "brake - Floue")
+    plt.plot(speedX_simple, label = "speed - Simple")
+    plt.title("Comparatif - Floue vs Simple - Vitesse - Alpine 1")
+    plt.legend()
+    
+    
+    
+    
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     #recordingFilename = os.path.join(CDIR, 'recordings', 'track.pklz')
-    recordingFilename = ('/media/sf_S8APP2/problematique-sam/scripts/drive-fuzzy/recordings/track-aalborg.pklz')
-    episode = EpisodeRecorder.restore(recordingFilename)
+    recordingFilename = ('/media/sf_S8APP2/problematique-sam/scripts/drive-fuzzy/recordings/track-alpine-1.pklz')
+    episode_fuzzy = EpisodeRecorder.restore(recordingFilename)
+    
+    recordingFilename = ('/media/sf_S8APP2/problematique-sam/scripts/drive-simple/recordings/track-alpine-1.pklz')
+    episode_simple = EpisodeRecorder.restore(recordingFilename)
     
     #histogram_speedX(episode)
-    track(episode)
+    #track(episode_fuzzy)
     #track_pos_angle_steer(episode)
+    #gear(episode)
+    
+    #comp_steer(episode_fuzzy, episode_simple)
+    comp_accel(episode_fuzzy, episode_simple)
     
     #episode.visualize(showObservations=True, showActions=True)
     #plt.show()

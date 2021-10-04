@@ -142,7 +142,7 @@ class SimpleController(object):
                     b = sxSensor - cSensor * cos10
                     angle = np.arcsin(b * b / (h * h + b * b))
                     
-                print(f'angle de la piste = {angle}')
+                #print(f'angle de la piste = {angle}')
                 self.trackAngle.append(angle)
                 # Estimate the target speed depending on turn and on how close it is
                 targetSpeed = maxSpeed * (cSensor * np.sin(angle) / maxSpeedDist) * angleSensitivity
