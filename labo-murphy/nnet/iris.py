@@ -58,20 +58,20 @@ def main():
     # Create neural network
     # TODO : Tune the number and size of hidden layers
     model = Sequential()
-    model.add(Dense(units=2, activation='sigmoid',
+    model.add(Dense(units=16, activation='tanh',
                     input_shape=(data.shape[-1],)))
-    model.add(Dense(units=target.shape[-1], activation='tanh'))
+    model.add(Dense(units=target.shape[-1], activation='linear'))
     print(model.summary())
 
     # Define training parameters
     # TODO : Tune the training parameters
-    model.compile(optimizer=SGD(lr=1.0, momentum=0.9),
+    model.compile(optimizer=SGD(lr=0.1, momentum=0.9),
                   loss='mse')
 
     # Perform training
     # TODO : Tune the maximum number of iterations
     model.fit(data, target, batch_size=len(data),
-              epochs=10, shuffle=True, verbose=1)
+              epochs=750, shuffle=True, verbose=1)
 
     # Save trained model to disk
     model.save('iris.h5')

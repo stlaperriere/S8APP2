@@ -27,16 +27,32 @@
 # Author: Simon Brodeur <simon.brodeur@usherbrooke.ca>
 # Université de Sherbrooke, APP3 S8GIA, A2018
 
+import random
 import numpy as np
+import tensorflow as tf
 import matplotlib.pyplot as plt
 
+from keras import backend as K
 from keras.models import Sequential, load_model
 from keras.layers import Dense
 from keras.optimizers import SGD
+from keras.initializers import RandomUniform
 
+def initRandom(seed=0):
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.set_random_seed(seed)
+    
+    config = tf.ConfigProto(intra_op_parallelism_threads=1,
+                            inter_op_parallelism_threads=1,
+                            device_count={'CPU':1})
+    
+    K.clear_session()
+    K.set_session(tf.Session(config=config))
 
 def main():
-
+    
     # XOR data set
     data = np.array([[0, 0],
                      [0, 1],
@@ -67,13 +83,13 @@ def main():
     # Create neural network
     # TODO : Tune the number and size of hidden layers
     model = Sequential()
-    model.add(Dense(units=2, activation='linear', input_shape=(2,)))
-    model.add(Dense(units=1, activation='linear'))
+    model.add(Dense(units=4, activation='sigmoid', input_shape=(2,)))#, kernel_initializer=RandomUniform(minval=-0.01, maxval=0.01)))
+    model.add(Dense(units=1, activation='sigmoid'))
     print(model.summary())
 
     # Define training parameters
     # TODO : Tune the training parameters
-    model.compile(optimizer=SGD(lr=0.01, momentum=0.9), loss='mse')
+    model.compile(optimizer=SGD(lr=0.5, momentum=0.9), loss='binary_crossentropy')
 
     # Perform training
     # TODO : Tune the maximum number of iterations
@@ -93,4 +109,5 @@ def main():
 
 
 if __name__ == "__main__":
+    initRandom()
     main()
