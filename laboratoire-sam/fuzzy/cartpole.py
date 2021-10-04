@@ -216,26 +216,42 @@ def createFuzzyController():
     #    'mom'     : mean of maximum
     #    'som'     : min of maximum
     #    'lom'     : max of maximum
-    ant1 = ctrl.Antecedent(np.linspace(-1, 1, 1000), 'input1')
-    ant2 = ctrl.Antecedent(np.linspace(-1, 1, 1000), 'input2')
-    cons1 = ctrl.Consequent(np.linspace(-1, 1, 1000), 'output1', defuzzify_method='centroid')
+    # ant1 : angle
+    # ant2 : vitesse
+    angle = ctrl.Antecedent(np.linspace(-180, 180, 1000), 'input1')
+    speed = ctrl.Antecedent(np.linspace(-100, 100, 1000), 'input2')
+    force = ctrl.Consequent(np.linspace(-1, 1, 1000), 'output1', defuzzify_method='centroid')
 
     # Accumulation (accumulation_method) methods for fuzzy variables:
     #    np.fmax
     #    np.multiply
-    cons1.accumulation_method = np.fmax
+    force.accumulation_method = np.fmax
 
     # TODO: Create membership functions
-    ant1['membership1'] = fuzz.trapmf(ant1.universe, [-1, -0.5, 0.5, 1])
-    ant1['membership2'] = fuzz.trapmf(ant1.universe, [-0.75, -0.5, 0.5, 0.75])
+    angle['null'] = fuzz.trapmf(angle.universe, [-15, -5, 5, 15])
+    angle['negative'] = fuzz.trapmf(angle.universe, [-181, -180, -15, 0])
+    angle['positive'] = fuzz.trapmf(angle.universe, [0, 15, 180, 181])
 
-    ant2['membership1'] = fuzz.trapmf(ant1.universe, [-1, -0.5, 0.5, 1])
+    speed['null'] = fuzz.trimf(speed.universe, [-40, 0, 40])
+    speed['negative'] = fuzz.trapmf(speed.universe, [-101, -100, -30, 0])
+    speed['positive'] = fuzz.trapmf(speed.universe, [0, 30, 100, 101])
 
-    cons1['membership1'] = fuzz.trimf(cons1.universe, [-1, 0, 1])
+    force['negative'] = fuzz.trapmf(force.universe, [-51, -50, -20, 0])
+    force['null'] = fuzz.trimf(force.universe, [-20, 0, 20])
+    force['positive'] = fuzz.trapmf(force.universe, [0, 20, 30, 51])
 
     # TODO: Define the rules.
+    # ajouter toutes les regles 2 antecedents ==> un consequent (bref, la grille)
     rules = []
-    rules.append(ctrl.Rule(antecedent=(ant1['membership1'] & ant2['membership1']), consequent=cons1['membership1']))
+    rules.append(ctrl.Rule(antecedent=(angle['negative'] & speed['negative']), consequent=force['negative']))
+    rules.append(ctrl.Rule(antecedent=(angle['negative'] & speed['null']), consequent=force['negative']))
+    rules.append(ctrl.Rule(antecedent=(angle['negative'] & speed['positive']), consequent=force['poitive']))
+    rules.append(ctrl.Rule(antecedent=(angle['null'] & speed['negative']), consequent=force['negative']))
+    rules.append(ctrl.Rule(antecedent=(angle['null'] & speed['null']), consequent=force['null']))
+    rules.append(ctrl.Rule(antecedent=(angle['null'] & speed['positive']), consequent=force['poitive']))
+    rules.append(ctrl.Rule(antecedent=(angle['positive'] & speed['negative']), consequent=force['negative'])) # a partir d'ici c'est pas bon
+    rules.append(ctrl.Rule(antecedent=(angle['positive'] & speed['null']), consequent=force['null']))
+    rules.append(ctrl.Rule(antecedent=(angle['positive'] & speed['positive']), consequent=force['poitive']))
 
     # Conjunction (and_func) and disjunction (or_func) methods for rules:
     #     np.fmin

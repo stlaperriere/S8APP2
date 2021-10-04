@@ -67,17 +67,17 @@ def main():
     # Create neural network
     # TODO : Tune the number and size of hidden layers
     model = Sequential()
-    model.add(Dense(units=2, activation='linear', input_shape=(2,)))
+    model.add(Dense(units=4, activation='sigmoid', input_shape=(2,))) 
     model.add(Dense(units=1, activation='linear'))
     print(model.summary())
 
     # Define training parameters
     # TODO : Tune the training parameters
-    model.compile(optimizer=SGD(lr=0.01, momentum=0.9), loss='mse')
+    model.compile(optimizer=SGD(lr=0.5, momentum=0.9), loss='binary_crossentropy')
 
     # Perform training
     # TODO : Tune the maximum number of iterations
-    model.fit(data, target, batch_size=len(data), epochs=1000, shuffle=True, verbose=1)
+    model.fit(data, target, batch_size=len(data), epochs=1000, shuffle=True, verbose=1) # ALLER VOIR DOCUM
 
     # Save trained model to disk
     model.save('xor.h5')
