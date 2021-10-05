@@ -1,3 +1,12 @@
+###############################################################################
+# Université de Sherbrooke
+# Génie informatique
+# S8 - APP2 - A21
+# Samuel Laperrière - laps2022
+# Raphaël Lebrasseur - lebr2112
+# Charles Murphy - murc3002
+###############################################################################
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from skfuzzy import control as ctrl

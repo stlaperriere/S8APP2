@@ -1,10 +1,14 @@
+###############################################################################
+# Université de Sherbrooke
+# Génie informatique
+# S8 - APP2 - A21
+# Samuel Laperrière - laps2022
+# Raphaël Lebrasseur - lebr2112
+# Charles Murphy - murc3002
+###############################################################################
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Oct  1 14:03:23 2021
-
-@author: user
-"""
 
 import numpy as np
 
