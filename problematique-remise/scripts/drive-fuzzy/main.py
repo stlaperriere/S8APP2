@@ -59,10 +59,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def drive(simpleController, fuzzyController, state):
+    # Cette méthode permet de choisir le contrôleur à utiliser. Pour changer,
+    # décommenter les lignes appropriées.
+    
     #accel, brake = simpleController._calculateAcceleration(state)
     accel, brake = fuzzyController.calculateAccel(state)
+    
     #gear = simpleController._calculateGear(state)
     gear = fuzzyController.calculateGear(state)
+    
     #steer = simpleController._calculateSteering(state)
     steer = fuzzyController.calculateSteer(state)
 
