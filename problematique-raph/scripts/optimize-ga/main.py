@@ -27,6 +27,16 @@
 # Author: Simon Brodeur <simon.brodeur@usherbrooke.ca>
 # Université de Sherbrooke, APP3 S8GIA, A2018
 
+# MODIFICATIONS
+###############################################################################
+# Université de Sherbrooke
+# Génie informatique
+# S8 - APP2 - A21
+# Samuel Laperrière - laps2022
+# Raphaël Lebrasseur - lebr2112
+# Charles Murphy - murc3002
+###############################################################################
+
 import os
 import sys
 import time
@@ -41,19 +51,25 @@ CDIR = os.path.dirname(os.path.realpath(__file__))
 
 logger = logging.getLogger(__name__)
 
-
-
 ################################
 # Define hyperparameters here
 ################################
-mutation_rate = 0.025 # Mutation rate to determine if mutation ocures
-population_size = 75
 boundaries = [[0.1, 5], [0.1, 5], [0.1, 5], [0.1, 5], [0.1, 5], [1, 10], [0, 90], [0, 90]]
-n_bits = 8
-n_gen = 100
-n_dead = 15
-n_bits_muta = 3
-fitness_name = "Speed (km/h)" # "Speed (km/h)" or "Fuel Consumption (km/L)"
+n_bits = 8 # Amount of bits for each gene
+
+# ARRAY OF PARAMETERS TO LOOP THROUGH 
+mutation_rate_list = [0.05] # Mutation rate to determine if mutation ocures
+n_bits_muta_list = [2]
+population_size_list = [55, 75, 95]
+n_gen_list = [100]
+n_dead_list = [15]
+
+# FITNESS FUNCTION TO USE 
+# "Speed (km/h)" 
+# or 
+# "Fuel Consumption (km/L)"
+fitness_name = "Speed (km/h)" 
+
 ################################
 # Define helper functions here
 ################################
@@ -117,162 +133,130 @@ def scale_value(value, n, new_max, new_min):
 
 def main():
     
-    try:
-        maxEvaluationTime = 40.0  # sec
-        with TorcsOptimizationEnv(maxEvaluationTime) as env:
+    # For each gen
+    for n_gen in n_gen_list:
+        
+        # For each pop
+        for population_size in population_size_list:
             
-            # Create n randoms parents
-            population = [np.random.randint(0, 2, n_bits*len(boundaries)).tolist() for _ in range(population_size)]
+            # For each Crossover
+            for n_dead in n_dead_list:
             
-            best_person, best_score = 0, fitness_function(-1, -1, -1, fitness_name)
-            current_best_person, current_best_score = 0, fitness_function(-1, -1, -1, fitness_name)
-            
-            # Data for plot
-            avg_fitness = []
-            best_fitness = []
-            
-            # Loop a few times for demonstration purpose
-            for i in range(n_gen):
-                logger.info("Generation : %d", i)
-                scores = []
-                for j, person in enumerate(population):
-                    parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in person[:n_bits]), 2), n_bits, 5, 0.101)]),
-                                  'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101)]),
-                                  'gear-4-ratio':               np.array([scale_value(int("".join(str(x) for x in person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101)]),
-                                  'gear-5-ratio':               np.array([scale_value(int("".join(str(x) for x in person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101)]),
-                                  'gear-6-ratio':               np.array([scale_value(int("".join(str(x) for x in person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101)]),
-                                  'rear-differential-ratio':    np.array([scale_value(int("".join(str(x) for x in person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1)]),
-                                  'rear-spoiler-angle':         np.array([scale_value(int("".join(str(x) for x in person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0)]),
-                                  'front-spoiler-angle':        np.array([scale_value(int("".join(str(x) for x in person[7*n_bits:]), 2), n_bits, 90, 0)])}
+                for mutation_rate in mutation_rate_list:
                     
-                    # Perform the evaluation with the simulator and p2 not in dead_indexes
-                    observation, _, _, _ = env.step(parameters)
+                    for n_bits_muta in n_bits_muta_list:
                     
-                    # Calcul du score
-                    scores.append(fitness_function(observation['topspeed'][0], observation['distRaced'][0], observation['fuelUsed'][0], fitness_name))
-                  
-                    
-                    # Find all time best person
-                    
-                    if scores[j] > best_score:
-                        best_person, best_score = population[j], scores[j]
-                        logger.info("New all time best = %f", best_score)
+                        try:
+                            maxEvaluationTime = 40.0  # sec
+                            with TorcsOptimizationEnv(maxEvaluationTime) as env:
+                                
+                                # Create n randoms parents
+                                population = [np.random.randint(0, 2, n_bits*len(boundaries)).tolist() for _ in range(population_size)]
+                                
+                                current_best_person, current_best_score = 0, fitness_function(-1, -1, -1, fitness_name)
+                                
+                                # Data for plot
+                                avg_fitness = []
+                                best_fitness = []
+                                
+                                # Loop a few times for demonstration purpose
+                                for i in range(n_gen):
+                                    logger.info("Generation : %d", i)
+                                    scores = []
+                                    for j, person in enumerate(population):
+                                        parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in person[:n_bits]), 2), n_bits, 5, 0.101)]),
+                                                      'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101)]),
+                                                      'gear-4-ratio':               np.array([scale_value(int("".join(str(x) for x in person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101)]),
+                                                      'gear-5-ratio':               np.array([scale_value(int("".join(str(x) for x in person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101)]),
+                                                      'gear-6-ratio':               np.array([scale_value(int("".join(str(x) for x in person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101)]),
+                                                      'rear-differential-ratio':    np.array([scale_value(int("".join(str(x) for x in person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1)]),
+                                                      'rear-spoiler-angle':         np.array([scale_value(int("".join(str(x) for x in person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0)]),
+                                                      'front-spoiler-angle':        np.array([scale_value(int("".join(str(x) for x in person[7*n_bits:]), 2), n_bits, 90, 0)])}
+                                        
+                                        # Perform the evaluation with the simulator and p2 not in dead_indexes
+                                        observation, _, _, _ = env.step(parameters)
+                                        
+                                        # Calcul du score
+                                        scores.append(fitness_function(observation['topspeed'][0], observation['distRaced'][0], observation['fuelUsed'][0], fitness_name))
 
+                                    if i < n_gen:
+                                        # Survivor selection
+                                        dead_indexes = select_k_lowest(scores, n_dead)
+                                        
+                                        # Create a child for each dead person
+                                        for j in range(n_dead):
+                                            # Select 2 parents that survived
+                                            
+                                            parents = [population[select_parent(scores, dead_indexes)] for x in range(8)]
+                                            # Create a new child
+                                            child = reproduction(parents, n_bits)
+                                            
+                                            # Replace a dead person with the new child
+                                            population[dead_indexes[j]] = child
+                                            
+                                    # Probability of mutation of the person
+                                    for j, person in enumerate(population):
+                                        if np.random.random() < mutation_rate:
+                                            population[j] = mutation(person, n_bits_muta, n_bits)
+                                        
+                                    # Get the current best
                     
+                                    best_i = np.argmax(scores)
+                                    current_best_person, current_best_score = population[best_i], scores[best_i]
+                                    logger.info("Best player in the current gen = %f", current_best_score)
+                                    
+                                    
+                                
+                                    avg_fitness.append(np.mean(np.array(scores)))
+                                    best_fitness.append(current_best_score)
+                                
+                                plt.plot(avg_fitness, label="Avg - {0} individus,  {1} enfants".format(population_size, n_dead)) 
+                                plt.plot(best_fitness, label="Best - {0} individus,  {1} enfants".format(population_size, n_dead))
+                                plt.legend()
+                                plt.ylabel(fitness_name)
+                                plt.xlabel("Générations")
+                                plt.title("Best And Average " + fitness_name + " Over Generations")
+                                plt.show()
+                                
+                                # SIMULATE THE CURRENT BEST PLAYER #############################################################################
+                                parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[:n_bits]), 2), n_bits, 5, 0.101)]),
+                                              'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101)]),
+                                              'gear-4-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101)]),
+                                              'gear-5-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101)]),
+                                              'gear-6-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101)]),
+                                              'rear-differential-ratio':    np.array([scale_value(int("".join(str(x) for x in current_best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1)]),
+                                              'rear-spoiler-angle':         np.array([scale_value(int("".join(str(x) for x in current_best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0)]),
+                                              'front-spoiler-angle':        np.array([scale_value(int("".join(str(x) for x in current_best_person[7*n_bits:]), 2), n_bits, 90, 0)])}
                     
+                                # Perform the evaluation with the simulator and p2 not in dead_indexes
+                                observation, _, _, _ = env.step(parameters)
+                                
+                                # Display simulation results
+                                logger.info(' ')
+                                logger.info(' ')
+                                logger.info('##################################################')
+                                logger.info('Best Results at Last Generation:')
+                                logger.info('Time elapsed (sec)      =   %f', maxEvaluationTime)
+                                logger.info('Top speed (km/h)        =   %f', observation['topspeed'][0])
+                                logger.info('Distance raced (m)      =   %f', observation['distRaced'][0])
+                                logger.info('Fuel used (l)           =   %f', observation['fuelUsed'][0])
+                                logger.info('Fuel consumption (km/l) =   %f', observation['distRaced'][0] / (observation['fuelUsed'][0] * 1000))
+                                logger.info('Input parameters:')
+                                logger.info('gear-2-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[:n_bits]), 2), n_bits, 5, 0.101))
+                                logger.info('gear-3-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101))
+                                logger.info('gear-4-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101))
+                                logger.info('gear-5-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101))
+                                logger.info('gear-6-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101))
+                                logger.info('rear-differential-ratio =   %f', scale_value(int("".join(str(x) for x in current_best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1))
+                                logger.info('rear-spoiler-angle      =   %f', scale_value(int("".join(str(x) for x in current_best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0))
+                                logger.info('front-spoiler-angle     =   %f', scale_value(int("".join(str(x) for x in current_best_person[7*n_bits:]), 2), n_bits, 90, 0))
+                                logger.info('##################################################')
+                                    
+                        except TorcsException as e:
+                            logger.error('Error occured communicating with TORCS server: ' + str(e))
                     
-                
-                if i < n_gen:
-                    # Survivor selection
-                    dead_indexes = select_k_lowest(scores, n_dead)
-                    
-                    # Create a child for each dead person
-                    for j in range(n_dead):
-                        # Select 2 parents that survived
-                        
-                        parents = [population[select_parent(scores, dead_indexes)] for x in range(8)]
-                        # Create a new child
-                        child = reproduction(parents, n_bits)
-                        
-                        # Replace a dead person with the new child
-                        population[dead_indexes[j]] = child
-                        
-                # Probability of mutation of the person
-                for j, person in enumerate(population):
-                    if np.random.random() < mutation_rate:
-                        population[j] = mutation(person, n_bits_muta, n_bits)
-                    
-                # Get the current best
-
-                best_i = np.argmax(scores)
-                current_best_person, current_best_score = population[best_i], scores[best_i]
-                logger.info("Best player in the current gen = %f", current_best_score)
-                
-                
-            
-                avg_fitness.append(np.mean(np.array(scores)))
-                best_fitness.append(current_best_score)
-                
-            plt.plot(avg_fitness, color='blue', label='Average') 
-            plt.plot(best_fitness, color='orange', label='Best') 
-            plt.ylabel(fitness_name)
-            plt.xlabel("Générations")
-            plt.title("Best And Average " + fitness_name + " Over Generations")
-            plt.show()
-            
-            # SIMULATE THE CURRENT BEST PLAYER #############################################################################
-            parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[:n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-4-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-5-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-6-ratio':               np.array([scale_value(int("".join(str(x) for x in current_best_person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'rear-differential-ratio':    np.array([scale_value(int("".join(str(x) for x in current_best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1)]),
-                          'rear-spoiler-angle':         np.array([scale_value(int("".join(str(x) for x in current_best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0)]),
-                          'front-spoiler-angle':        np.array([scale_value(int("".join(str(x) for x in current_best_person[7*n_bits:]), 2), n_bits, 90, 0)])}
-
-            # Perform the evaluation with the simulator and p2 not in dead_indexes
-            observation, _, _, _ = env.step(parameters)
-            
-            # Display simulation results
-            logger.info(' ')
-            logger.info(' ')
-            logger.info('##################################################')
-            logger.info('Best Results at Last Generation:')
-            logger.info('Time elapsed (sec)      =   %f', maxEvaluationTime)
-            logger.info('Top speed (km/h)        =   %f', observation['topspeed'][0])
-            logger.info('Distance raced (m)      =   %f', observation['distRaced'][0])
-            logger.info('Fuel used (l)           =   %f', observation['fuelUsed'][0])
-            logger.info('Fuel consumption (km/l) =   %f', observation['distRaced'][0] / (observation['fuelUsed'][0] * 1000))
-            logger.info('Input parameters:')
-            logger.info('gear-2-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[:n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-3-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-4-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-5-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-6-ratio            =   %f', scale_value(int("".join(str(x) for x in current_best_person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('rear-differential-ratio =   %f', scale_value(int("".join(str(x) for x in current_best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1))
-            logger.info('rear-spoiler-angle      =   %f', scale_value(int("".join(str(x) for x in current_best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0))
-            logger.info('front-spoiler-angle     =   %f', scale_value(int("".join(str(x) for x in current_best_person[7*n_bits:]), 2), n_bits, 90, 0))
-            logger.info('##################################################')
-                        
-            # SIMULATE THE ALL TIME BEST PLAYER #############################################################################
-            parameters = {'gear-2-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[:n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-3-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-4-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-5-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'gear-6-ratio':               np.array([scale_value(int("".join(str(x) for x in best_person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101)]),
-                          'rear-differential-ratio':    np.array([scale_value(int("".join(str(x) for x in best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1)]),
-                          'rear-spoiler-angle':         np.array([scale_value(int("".join(str(x) for x in best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0)]),
-                          'front-spoiler-angle':        np.array([scale_value(int("".join(str(x) for x in best_person[7*n_bits:]), 2), n_bits, 90, 0)])}
-
-            # Perform the evaluation with the simulator and p2 not in dead_indexes
-            observation, _, _, _ = env.step(parameters)
-            
-            # Display simulation results
-            logger.info(' ')
-            logger.info(' ')
-            logger.info('##################################################')
-            logger.info('All Time Best Results:')
-            logger.info('Time elapsed (sec)      =   %f', maxEvaluationTime)
-            logger.info('Top speed (km/h)        =   %f', observation['topspeed'][0])
-            logger.info('Distance raced (m)      =   %f', observation['distRaced'][0])
-            logger.info('Fuel used (l)           =   %f', observation['fuelUsed'][0])
-            logger.info('Fuel consumption (km/l) =   %f', observation['distRaced'][0] / (observation['fuelUsed'][0] * 1000))
-            logger.info('Input parameters:')
-            logger.info('gear-2-ratio            =   %f', scale_value(int("".join(str(x) for x in best_person[:n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-3-ratio            =   %f', scale_value(int("".join(str(x) for x in best_person[n_bits:2*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-4-ratio            =   %f', scale_value(int("".join(str(x) for x in best_person[2*n_bits:3*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-5-ratio            =   %f', scale_value(int("".join(str(x) for x in best_person[3*n_bits:4*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('gear-6-ratio            =   %f', scale_value(int("".join(str(x) for x in best_person[4*n_bits:5*n_bits]), 2), n_bits, 5, 0.101))
-            logger.info('rear-differential-ratio =   %f', scale_value(int("".join(str(x) for x in best_person[5*n_bits:6*n_bits]), 2), n_bits, 10, 1))
-            logger.info('rear-spoiler-angle      =   %f', scale_value(int("".join(str(x) for x in best_person[6*n_bits:7*n_bits]), 2), n_bits, 90, 0))
-            logger.info('front-spoiler-angle     =   %f', scale_value(int("".join(str(x) for x in best_person[7*n_bits:]), 2), n_bits, 90, 0))
-            logger.info('##################################################')
-                
-    except TorcsException as e:
-        logger.error('Error occured communicating with TORCS server: ' + str(e))
-
-    except KeyboardInterrupt:
-        pass
+                        except KeyboardInterrupt:
+                            pass
 
     logger.info('All done.')
 
