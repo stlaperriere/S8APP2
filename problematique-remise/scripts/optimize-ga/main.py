@@ -1,3 +1,12 @@
+###############################################################################
+# Université de Sherbrooke
+# Génie informatique
+# S8 - APP2 - A21
+# Samuel Laperrière - laps2022
+# Raphaël Lebrasseur - lebr2112
+# Charles Murphy - murc3002
+###############################################################################
+
 # Copyright (c) 2018, Simon Brodeur
 # All rights reserved.
 #
@@ -64,7 +73,7 @@ population_size_list = [55, 75, 95]
 n_gen_list = [100]
 n_dead_list = [15]
 
-# FITNESS FUNCTION TO USE 
+# FITNESS FUNCTION TO USE (copy string in fitness_name)
 # "Speed (km/h)" 
 # or 
 # "Fuel Consumption (km/L)"
