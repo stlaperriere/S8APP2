@@ -971,7 +971,7 @@ class Episode(object):
             # Show car steering and gear commands
             plt.figure()
             plt.subplot(211)
-            plt.plot(t, self.steerCmd * 0.785398)
+            plt.plot(self.steerCmd * 0.785398)
             plt.title('Car steering command')
             plt.xlabel('Time [sec]')
             plt.ylabel('Steering angle [rad]')

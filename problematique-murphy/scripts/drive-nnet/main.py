@@ -1,3 +1,12 @@
+###############################################################################
+# Université de Sherbrooke
+# Génie informatique
+# S8 - APP2 - A21
+# Samuel Laperrière - laps2022
+# Raphaël Lebrasseur - lebr2112
+# Charles Murphy - murc3002
+###############################################################################
+
 # Copyright (c) 2018, Simon Brodeur
 # All rights reserved.
 #
@@ -25,8 +34,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # Author: Simon Brodeur <simon.brodeur@usherbrooke.ca>
-# Université de Sherbrooke, APP3 S8GIA, A2018
-
 import os
 import sys
 import time
@@ -34,11 +41,12 @@ import logging
 
 import math
 import numpy as np
-import scipy.io
+import matplotlib.pyplot as plt
 
 from keras.models import Sequential, load_model
 from keras.layers import Dense
 from keras.optimizers import SGD
+from keras.initializers import RandomUniform
 
 sys.path.append('../..')
 from torcs.control.core import TorcsControlEnv, TorcsException, EpisodeRecorder
@@ -52,22 +60,6 @@ logger = logging.getLogger(__name__)
 # Define helper functions here
 ################################
 
-"""def drive(self, state):
-    accel, brake = self._calculateAcceleration(state)
-    gear = self._calculateGear(state)
-    steer = self._calculateSteering(state)
-    
-    action = {'accel': np.array([accel], dtype=np.float32),
-              'brake': np.array([brake], dtype=np.float32),
-              'gear': np.array([gear], dtype=np.int32),
-              'steer': np.array([steer], dtype=np.float32)}
-    return action
-"""
-
-"""
-Define le gear, brake/acc et steer
-
-"""
 
 class NeuralNet(object):
 
@@ -77,46 +69,50 @@ class NeuralNet(object):
         self.momentum = momentum
         self.model = Sequential()
         
-        #input
-        self.model.add(Dense(units=4, input_shape=(6,), activation='tanh'))
         #hidden
-        self.model.add(Dense(units=4, activation='relu'))
+        self.model.add(Dense(units=14, 
+                             input_shape=(19,), 
+                             activation='tanh',
+                             kernel_initializer=RandomUniform(minval=-0.01, maxval=0.01)))
+        
         #output
-        self.model.add(Dense(units=4, activation='sigmoid'))
+        self.model.add(Dense(units=4, activation='tanh'))
         
         print(self.model.summary())
         
-        self.model.compile(optimizer=SGD(lr=self.lr,momentum=self.momentum), 
-                           loss='mse')
+        self.model.compile(optimizer=SGD(lr=self.lr,
+                                         momentum=self.momentum), 
+                                         loss='mse',
+                                         metrics=['accuracy'])
         
 
     # entraine le réseau
-    def _train(self, states, nb_of_epochs):
+    def _train(self, states, nb_of_epochs, filename='ann-drive.h5'):
     
         # the data is made of multiple states
         
         data = []
         target = []
         descaledTarget = []
+        lastBrakeCmd = 0
         
         for s in states:
             data.append({'angle':s['angle'], 
-                        #s['curlLapTime'],
-                        #s['damage'],
-                        #s['distFromStart'],
-                        #s['fuel'],
                         'gear':s['gear'],
                         'rpm':s['rpm'],
                         'speed':s['speed'],
-                        'trackPos':s['trackPos']
-                        #s...
+                        'trackPos':s['trackPos'],
+                        'track':s['track'],
+                        'wheelSpinVel':s['wheelSpinVel']
                         })
+            brakeCmd = (0.5 * s['brakeCmd'][0]) + (0.5 * lastBrakeCmd)
             target.append([
                         s['accelCmd'][0],
-                        s['brakeCmd'][0],
+                        brakeCmd,
                         s['gearCmd'][0],
                         s['steerCmd'][0]
                         ])
+            lastBrakeCmd = brakeCmd
         
         for t in target:
             descaledTarget.append(self._descaleTarget(t))
@@ -125,39 +121,83 @@ class NeuralNet(object):
         for d in data:
             scaledData.append(self._scaleData(d))
             
-        self.model.fit(np.array(scaledData), np.array(descaledTarget), batch_size=len(scaledData), 
-                       epochs=nb_of_epochs, shuffle=True, verbose=1)
+        history = self.model.fit(np.array(scaledData),
+                       np.array(descaledTarget), 
+                       batch_size=len(scaledData), 
+                       epochs=nb_of_epochs, 
+                       shuffle=True, verbose=0)
         
-        self.model.save('ann-drive.h5')
+        plt.plot(history.history['acc'])
+        plt.show()
+        
+        # summarize history for loss
+        plt.plot(history.history['loss'])
+        plt.title('model loss and accuracy')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['acc', 'loss'], loc='upper left')
+        plt.show()
+        
+        self.model.save(filename)
 
 
     # massage le state pour le fit à notre input
     def _scaleData(self, state):
-            
+        
+        MAX_SPEED_X = 150
+        MAX_SPEED_Y = 20
+        MAX_RPM = 10000
+        MAX_DIST = 100
+        MAX_SPIN_VEL = 150
         # on normalize l'input de -1 à 1 pour une tanh
-        angle = (state['angle'][0] / (2 * math.pi))
-        speed_x = (2 * state['speed'][0] / 10) - 1
-        speed_y = (2 * state['speed'][1] / 100) - 1
-        track_pos = state['trackPos'][0]
-        rpm = (2 * state['rpm'][0]  / 10000) - 1
-        gear = (2 * (state['gear'] + 1) / 7) - 1
-        return [ angle, speed_x, speed_y, track_pos, rpm, gear]
+        angle = np.clip(state['angle'][0] / (2 * math.pi), -1, 1)
+        speed_x = state['speed'][0] / MAX_SPEED_X
+        speed_y = state['speed'][1] / MAX_SPEED_Y
+        track_pos = np.clip(state['trackPos'][0], -1, 1)
+        rpm = state['rpm'][0] / MAX_RPM
+        gear = state['gear'][0] / 6
+        track_0 = state['track'][2] / MAX_DIST
+        track_1 = state['track'][3] / MAX_DIST
+        track_2 = state['track'][7] / MAX_DIST
+        track_3 = state['track'][8] / MAX_DIST
+        track_4 = state['track'][9] / MAX_DIST
+        track_5 = state['track'][18-8] / MAX_DIST
+        track_6 = state['track'][18-7] / MAX_DIST
+        track_7 = state['track'][18-3] / MAX_DIST
+        track_8 = state['track'][18-2] / MAX_DIST
+        wheel_0 = state['wheelSpinVel'][0] / MAX_SPIN_VEL
+        wheel_1 = state['wheelSpinVel'][1] / MAX_SPIN_VEL        
+        wheel_2 = state['wheelSpinVel'][2] / MAX_SPIN_VEL
+        wheel_3 = state['wheelSpinVel'][3] / MAX_SPIN_VEL
+        return [ angle, 
+                speed_x, speed_y, 
+                track_pos, 
+                rpm, gear,
+                track_0, track_1, 
+                track_2, track_3, 
+                track_4, track_5, 
+                track_6, 
+                track_7, 
+                track_8,
+                wheel_0, wheel_1, wheel_2, wheel_3
+                ]
     
     
     def _descaleTarget(self, target):
-        accel = np.clip(target[0], 0, 1)
-        brake = np.clip(target[1], 0, 1)
-        gear = np.clip((target[2] + 1) / 7, 0, 1)
-        steer = np.clip((target[3] + 1) / 2, 0, 1)
+        # on adapte à une tanh
+        accel = target[0]
+        brake = target[1]
+        gear = target[2] / 6
+        steer = np.clip(target[3], -1, 1)
         
         return [accel, brake, gear, steer]
     
     def _scaleTarget(self, data):
-        
+        # on adapte depuis une tanh
         accel = np.clip(data[0][0], 0, 1)
         brake = np.clip(data[0][1], 0, 1)
-        gear = math.ceil((np.clip(data[0][2], 0, 1) * 7) - 1)
-        steer = np.clip((data[0][3] * 2) - 1, -1, 1)
+        gear = round(np.clip(data[0][2], 0, 1) * 5) + 1
+        steer = np.clip(data[0][3], -1, 1)
         
         return {'accel':np.array([accel], dtype=np.float32),
                 'brake':np.array([brake], dtype=np.float32), 
@@ -165,9 +205,9 @@ class NeuralNet(object):
                 'steer':np.array([steer], dtype=np.float32)}
 
 
-    def _load(self):
+    def _load(self, filename='ann-drive.h5'):
         
-        self.model = load_model('ann-drive.h5')
+        self.model = load_model(filename)
         
 
     # prédit selon l'état
@@ -180,34 +220,30 @@ class NeuralNet(object):
         prediction = self._scaleTarget(self.model.predict(np.array([data])))
         
         return prediction
-        """
-        action = {'accel': np.array([prediction[0]], dtype=np.float32),
-              'brake': np.array([prediction[1]], dtype=np.float32),
-              'gear': np.array([prediction[2]], dtype=np.int32),
-              'steer': np.array([prediction[3]], dtype=np.float32)}
-        return action"""
         
 
 def main():
 
     recordingsPath = os.path.join(CDIR, 'recordings')
-    trainingPath = os.path.join(CDIR, 'training')
     if not os.path.exists(recordingsPath):
         os.makedirs(recordingsPath)
 
     
-    # test with one track
-    # TODO: train with all tracks
-    trainingFilename = os.path.join(trainingPath, 'track-alpine-1.pklz')
-    episode = EpisodeRecorder.restore(trainingFilename)
+    trainingPath = os.path.join(CDIR, 'training')
+    trainingData = []
+    for f in os.listdir(trainingPath):
+        trainingFilename = os.path.join(trainingPath, f)
+        episode = EpisodeRecorder.restore(trainingFilename)
+        trainingData += episode.states
+        
     
-    ann = NeuralNet(0.3, 0.9)
-    ann._train(episode.states, 500);
-    ann._load()
+    ann = NeuralNet(0.2, 0.9)
+    #ann._train(trainingData, 1000, 'ann-drive-simple-tweaks-input.h5');
+    ann._load('ann-drive-simple-low-pass-single-layer-020-4000.h5')
             
 
     try:
-        with TorcsControlEnv(render=False) as env:
+        with TorcsControlEnv(render=True) as env:
 
             nbTracks = len(TorcsControlEnv.availableTracks)
             nbSuccessfulEpisodes = 0
@@ -223,10 +259,7 @@ def main():
                 done = False
                 with EpisodeRecorder(os.path.join(recordingsPath, 'track-%s.pklz' % (trackName))) as recorder:
                     while not done:
-                        # TODO: Select the next action based on the observation
                         action = ann._drive(observation)
-                        #action = env.action_space.sample()
-                        #print(action)
                         recorder.save(observation, action)
     
                         # Execute the action
