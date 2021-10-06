@@ -106,15 +106,15 @@ class FuzzyController(object):
         system = ctrl.ControlSystem(rules)
         sim = ctrl.ControlSystemSimulation(system)
         
-        #print('------------------------ RULES ------------------------')
-        #for rule in sim.ctrl.rules:
-        #    print(rule)
-        #print('-------------------------------------------------------')
+        print('------------------------ RULES ------------------------')
+        for rule in sim.ctrl.rules:
+            print(rule)
+        print('-------------------------------------------------------')
     
         # Display fuzzy variables
-        #for var in sim.ctrl.fuzzy_variables:
-        #    var.view()
-        #plt.show()
+        for var in sim.ctrl.fuzzy_variables:
+            var.view()
+        plt.show()
             
         return sim
     
@@ -127,7 +127,7 @@ class FuzzyController(object):
     
     def createAccelController(self) :
         track_angle = ctrl.Antecedent(np.linspace(0, np.pi/2, 1000), 'track_angle')
-        speed = ctrl.Antecedent(np.linspace(0, 400, 1000), 'speed')
+        speed = ctrl.Antecedent(np.linspace(0, 150, 1000), 'speed')
         
         accel = ctrl.Consequent(np.linspace(-1, 1, 1000), 'accel', defuzzify_method='centroid')
         
@@ -137,9 +137,9 @@ class FuzzyController(object):
         track_angle['med'] = fuzz.trapmf(track_angle.universe, [0.4, 0.6, np.pi/4, 3*np.pi/8])
         track_angle['sharp'] = fuzz.trapmf(track_angle.universe, [1, 1.2, np.pi/2, np.pi/2])
         
-        speed['slow'] = fuzz.trapmf(speed.universe, [0, 0, 30, 40])
-        speed['med'] = fuzz.trapmf(speed.universe, [40, 50, 70, 80])
-        speed['fast'] = fuzz.trapmf(speed.universe, [70, 90, 400, 400])
+        speed['slow'] = fuzz.trapmf(speed.universe, [0, 0, 30, 50])
+        speed['med'] = fuzz.trapmf(speed.universe, [40, 50, 80, 100])
+        speed['fast'] = fuzz.trapmf(speed.universe, [80, 90, 150, 150])
         
         accel['arriere-toute'] = singletonmf(accel.universe, -1)
         accel['arriere'] = singletonmf(accel.universe, -0.25)
@@ -246,9 +246,9 @@ class FuzzyController(object):
         
         shouldShift.accumulation_method = np.fmax
         
-        rpm['low'] = fuzz.trapmf(rpm.universe, [0, 0, 3000, 3500])
-        rpm['med'] = fuzz.trapmf(rpm.universe, [3000, 3500, 6000, 6500])
-        rpm['high'] = fuzz.trapmf(rpm.universe, [6000, 6500, 8000, 8000])
+        rpm['low'] = fuzz.trapmf(rpm.universe, [0, 0, 4000, 4500])
+        rpm['med'] = fuzz.trapmf(rpm.universe, [4000, 4500, 5500, 6000])
+        rpm['high'] = fuzz.trapmf(rpm.universe, [5500, 6000, 8000, 8000])
         
         shouldShift['downshift'] = singletonmf(shouldShift.universe, -1)
         shouldShift['stay'] = singletonmf(shouldShift.universe, 0)
@@ -269,26 +269,26 @@ class FuzzyController(object):
         system = ctrl.ControlSystem(rules)
         sim = ctrl.ControlSystemSimulation(system)
         
-        print('------------------------ RULES ------------------------')
-        for rule in sim.ctrl.rules:
-            print(rule)
-        print('-------------------------------------------------------')
+        #print('------------------------ RULES ------------------------')
+        #for rule in sim.ctrl.rules:
+        #    print(rule)
+        #print('-------------------------------------------------------')
     
         # Display fuzzy variables
-        for var in sim.ctrl.fuzzy_variables:
-            var.view()
-        plt.show()
+        #for var in sim.ctrl.fuzzy_variables:
+        #    var.view()
+        #plt.show()
             
         return sim
     
     def calculateGear(self, state):
         #return 1
-        print(state['rpm'])
+        #print(state['rpm'])
         self.shiftController.input['rpm'] = state['rpm']
         self.shiftController.compute()
         shouldShift = self.shiftController.output['shouldShift']
         
-        print(shouldShift)
+        #print(shouldShift)
         
         nextGear = state['gear'][0]
         
@@ -299,5 +299,5 @@ class FuzzyController(object):
         elif shouldShift[0] < -0.5 and state['gear'][0] > 1:
             nextGear = nextGear - 1
         
-        print(nextGear)
+        #print(nextGear)
         return nextGear
