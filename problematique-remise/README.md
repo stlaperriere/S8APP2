@@ -15,3 +15,14 @@ Exécuter le fichier `main.py` situé dans `scripts/drive-fuzzy`.
 Pour visualiser tous les graphiques présentés dans les diapositives de la défense de la solution, exécuter le fichier `visualisation.py` dans ce même dossier.
 
 Le code de logique floue utilise deux classes, contenues dans des fichiers séparés : `FuzzyController` et `SimpleController`. Le `SimpleController` est simplement une copie du code de `drive-simple`, empaqueté dans une classe. Il est donc possible d'utiliser soit le `SimpleController` ou le `FuzzyController` pour contrôler indépendamment l'accélération, la direction ou la transmission (voir la méthode `drive` dans `main.py`).
+
+## Exécution du code du réseau de neurones
+Exécuter le fichier `main.py` situé dans `scripts/drive-nnet`.
+
+Pour calibrer le réseau de neurones, aller dans la fonction main et modifier les arguments passés au NeuralNet.
+On l'entraîne et on le sauvegarde dans le fichier passé en argument à la fonction _train.
+Finalement, on peut utiliser la fonction _load pour charger un réseau déjà entrainé et l'utiliser comme environnement de contrôle pour TORCS.
+
+Pour plus de précision, on peut également calibrer les valeurs présentes dans la méthode __init__ de la classe NeuralNet.
+
+Pour entraîner le modèle, mettre les pistes d'entraînement dans le sous-dossier `training` du répertoire `scripts/drive-nnet`.
