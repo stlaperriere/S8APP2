@@ -27,12 +27,29 @@
 # Author: Simon Brodeur <simon.brodeur@usherbrooke.ca>
 # Université de Sherbrooke, APP3 S8GIA, A2018
 
+import random
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
+from keras import backend as K
 from keras.models import Sequential, load_model
 from keras.layers import Dense
 from keras.optimizers import SGD
+
+
+def setReproducible(seed=0):
+
+    # Fix the seed of all random number generator
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.set_random_seed(seed)
+
+    config = tf.ConfigProto(intra_op_parallelism_threads=1,
+                            inter_op_parallelism_threads=1,
+                            device_count={'CPU': 1})
+    K.clear_session()
+    K.set_session(tf.Session(config=config))
 
 
 def main():
@@ -65,18 +82,15 @@ def main():
     plt.show()
 
     # Create neural network
-    # TODO : Tune the number and size of hidden layers
     model = Sequential()
-    model.add(Dense(units=2, activation='sigmoid', input_shape=(2,)))
+    model.add(Dense(units=4, activation='sigmoid', input_shape=(2,)))
     model.add(Dense(units=1, activation='sigmoid'))
     print(model.summary())
 
     # Define training parameters
-    # TODO : Tune the training parameters
-    model.compile(optimizer=SGD(lr=0.5, momentum=0.9), loss='mse')
+    model.compile(optimizer=SGD(lr=0.5, momentum=0.9), loss='binary_crossentropy')
 
     # Perform training
-    # TODO : Tune the maximum number of iterations
     model.fit(data, target, batch_size=len(data), epochs=1000, shuffle=True, verbose=1)
 
     # Save trained model to disk
@@ -93,4 +107,5 @@ def main():
 
 
 if __name__ == "__main__":
+    setReproducible()
     main()

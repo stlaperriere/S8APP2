@@ -29,14 +29,52 @@
 
 import numpy as np
 import scipy.io
+import matplotlib.pyplot as plt
 
 from keras.models import Sequential, load_model
 from keras.layers import Dense
 from keras.optimizers import SGD
+from sklearn.decomposition.pca import PCA
+from mpl_toolkits.mplot3d import Axes3D
 
 ###############################################
 # Define helper functions here
 ###############################################
+
+
+# usage: OUT = scale_data(IN, MINMAX)
+#
+# Scale an input vector or matrix so that the values
+# are normalized in the range [-1, 1].
+#
+# Input:
+# - IN, the input vector or matrix.
+#
+# Output:
+# - OUT, the scaled input vector or matrix.
+# - MINMAX, the original range of IN, used later as scaling parameters.
+#
+def scaleData(x):
+    minmax = (np.min(x), np.max(x))
+    y = 2.0 * (x - np.min(x)) / (np.max(x) - np.min(x)) - 1
+    return y, minmax
+
+
+# usage: OUT = descale_data(IN, MINMAX)
+#
+# Descale an input vector or matrix so that the values
+# are denormalized from the range [-1, 1].
+#
+# Input:
+# - IN, the input vector or matrix.
+# - MINMAX, the original range of IN.
+#
+# Output:
+# - OUT, the descaled input vector or matrix.
+#
+def descaleData(x, minmax):
+    y = ((x + 1.0) / 2) * (minmax[1] - minmax[0]) + minmax[0]
+    return y
 
 
 ###############################################
@@ -52,26 +90,45 @@ def main():
     data = np.array(S['data'], dtype=np.float32)
     target = np.array(S['target'], dtype=np.float32)
 
+    # Show the 3D PCA projection of the data
+    pca = PCA(n_components=3)
+    pca.fit(data)
+    data3D = pca.transform(data)
+
+    colors = np.array([[1.0, 0.0, 0.0],   # Red
+                       [0.0, 1.0, 0.0],   # Green
+                       [0.0, 0.0, 1.0]])  # Blue
+    c = colors[np.argmax(target, axis=-1)]
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(data3D[:, 0], data3D[:, 1], data3D[:, 2], s=10.0, c=c, marker='x')
+    ax.set_title('IRIS dataset (3D projection)')
+    ax.set_xlabel('First principal component')
+    ax.set_ylabel('Second principal component')
+    ax.set_zlabel('Third principal component')
+    # fig.tight_layout()
+    plt.show()
+
     # TODO : Apply any relevant transformation to the data
     # (e.g. filtering, normalization, dimensionality reduction)
-    data = np.interp(data, (data.min(), data.max()), (-1, 1))
-    
+    data, minmax = scaleData(data)
 
     # Create neural network
     # TODO : Tune the number and size of hidden layers
     model = Sequential()
-    model.add(Dense(units=2, activation='sigmoid',
+    model.add(Dense(units=16, activation='tanh',
                     input_shape=(data.shape[-1],)))
-    model.add(Dense(units=target.shape[-1], activation='tanh'))
+    model.add(Dense(units=target.shape[-1], activation='linear'))
     print(model.summary())
 
     # Define training parameters
     # TODO : Tune the training parameters
-    model.compile(optimizer=SGD(lr=1.0, momentum=0.9),
+    model.compile(optimizer=SGD(lr=0.1, momentum=0.1),
                   loss='mse')
 
     # Perform training
-    # TODO : Tune the maximum number of iterations
+    # TODO : Tune the maximum number of iterations and desired error
     model.fit(data, target, batch_size=len(data),
               epochs=1000, shuffle=True, verbose=1)
 
