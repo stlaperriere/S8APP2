@@ -71,8 +71,14 @@ def initializePopulation(numparams, popsize, nbits=8):
     # Parameters should be in the interval [0,1], so
     # initialize values randomly in the interval [0,1]
 
-    # TODO: initialize the population
+    # TODO: initialize the population [DONE]
     population = np.zeros((popsize, numparams * nbits))
+    
+    for i in range(len(population)):
+        randomValues = np.random.uniform(size=numparams)
+        codedValues = encodeIndividual(randomValues, nbits)
+        population[i,:] = codedValues
+    
     return population
 
 
@@ -90,8 +96,13 @@ def initializePopulation(numparams, popsize, nbits=8):
 def encodeIndividual(cvalues, nbits):
     numparams = len(cvalues)
 
-    # TODO: encode individuals into binary vectors
+    # TODO: encode individuals into binary vectors [DONE]
     bvalues = np.zeros((numparams * nbits,))
+    
+    binParams = ufloat2bin(cvalues, nbits)
+    
+    bvalues = np.concatenate((binParams[0], binParams[1]))
+    
     return bvalues
 
 
@@ -107,8 +118,12 @@ def encodeIndividual(cvalues, nbits):
 # - CVALUES, a vector of continuous values representing the parameters.
 #
 def decodeIndividual(ind, numparams, minValue, maxValue):
-    # TODO: decode individuals from binary vectors
+    # TODO: decode individuals from binary vectors [DONE]
     cvalues = np.zeros((numparams,))
+    
+    cvalues[0] = bin2ufloat(ind[0:16], 16) * (maxValue - minValue) + minValue
+    cvalues[1] = bin2ufloat(ind[16:32], 16)* (maxValue - minValue) + minValue
+    
     return cvalues
 
 # usage: PAIRS = doSelection(POPULATION, FITNESS, NUMPAIRS)
@@ -126,12 +141,18 @@ def decodeIndividual(ind, numparams, minValue, maxValue):
 
 
 def doSelection(population, fitness, numPairs):
+    
+    # CHECKS FOR POSITIVITY?
+    
+    probabilities = np.cumsum(fitness) / np.sum(fitness)
 
-    # TODO: select pairs of individual in the population
+    # TODO: select pairs of individual in the population [DONE]
     pairs = []
     for _ in range(numPairs):
-        idx1 = np.random.randint(0, len(population))
-        idx2 = np.random.randint(0, len(population))
+        idx1 = np.argwhere(probabilities > np.random.uniform())[0][0]
+        idx2 = np.argwhere(probabilities > np.random.uniform())[0][0]
+        #idx1 = np.random.randint(0, len(population))
+        #idx2 = np.random.randint(0, len(population))
         pairs.append((population[idx1], population[idx2]))
 
     return pairs
@@ -154,9 +175,15 @@ def doSelection(population, fitness, numPairs):
 # - NIND2, a binary vector encoding the second new individual.
 #
 def doCrossover(ind1, ind2, crossoverProb, cutPointMod=1):
-    # TODO: Perform a crossover between two individuals
+    # TODO: Perform a crossover between two individuals [DONE]
+    
     nind1 = ind1
     nind2 = ind2
+    
+    if np.random.uniform() < crossoverProb:
+        nind1 = np.concatenate((ind1[0:cutPointMod], ind2[cutPointMod:32]))
+        nind2 = np.concatenate((ind2[0:cutPointMod], ind1[cutPointMod:32]))
+    
     return nind1, nind2
 
 
@@ -172,8 +199,15 @@ def doCrossover(ind1, ind2, crossoverProb, cutPointMod=1):
 # - NPOPULATION, the new population.
 #
 def doMutation(population, mutationProb):
-    # TODO: Apply mutation to the population
+    # TODO: Apply mutation to the population [DONE]
     npopulation = population
+    
+    if np.random.uniform() < mutationProb:
+        idx = np.floor(np.random.uniform(high=32))
+        
+        for i in range(len(population)):
+            population[i][int(idx)] = 1 if population[i][int(idx)] == 0 else 0
+    
     return npopulation
 
 
@@ -237,7 +271,7 @@ def bin2ufloat(bvalue, nbits):
 def main():
 
     # Fix random number generator seed for reproducible results
-    np.random.seed(0)
+    #np.random.seed(0)
 
     # Set to False to disable realtime plotting of landscape and population.
     # This is much faster!
@@ -247,9 +281,9 @@ def main():
     numparams = 2
 
     # TODO : adjust population size and encoding precision
-    popsize = 40
+    popsize = 30
     nbits = 16
-    population = initializePopulation(numparams, popsize, nbits)
+    population = initializePopulation(numparams, popsize, nbits) # [DONE]
 
     if SHOW_LANDSCAPE:
         # Plot function to optimize
@@ -277,7 +311,7 @@ def main():
 
     # TODO : Adjust optimization meta-parameters
     numGenerations = 15
-    mutationProb = 0.01
+    mutationProb = 0.1
     crossoverProb = 0.8
     bestIndividual = []
     bestIndividualFitness = -1e10
